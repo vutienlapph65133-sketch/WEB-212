@@ -23,8 +23,7 @@ if (is_file(__DIR__ . $path)) {
     return false;
 }
 
-// Các view đang dùng link tuyệt đối (href="/cinema/..."), nên khi chạy trong thư mục con
-// ta thêm $base vào trước các link đó. Không sửa gì trong app/Views.
+
 if ($base !== '') {
     ob_start(function ($html) use ($base) {
         return preg_replace('~\b(href|src|action)=(["\'])/(?!/)~', '$1=$2' . $base . '/', $html);
