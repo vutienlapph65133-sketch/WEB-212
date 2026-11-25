@@ -1,12 +1,5 @@
 <?php
-/**
- * public/index.php - Router tối giản CHỈ ĐỂ XEM THỬ giao diện bằng PHP built-in server.
- * Chạy:  php -S localhost:8000 -t public public/index.php
- * Khi ghép vào CodeIgniter 4 thì KHÔNG dùng file này (dùng app/Config/Routes.php).
- */
 
-// Thư mục con khi chạy qua Apache/Laragon, vd: /cinema_project_ready/public
-// (chạy bằng `php -S` thì $base = '' nên không ảnh hưởng gì)
 $base = '';
 if (basename($_SERVER['SCRIPT_NAME'] ?? '') === 'index.php') {
     $base = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'])), '/');
