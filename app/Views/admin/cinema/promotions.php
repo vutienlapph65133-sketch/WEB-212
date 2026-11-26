@@ -8,6 +8,7 @@ include __DIR__ . '/layouts/sidebar.php';
 
 $promotions = $promotions ?? [];
 $msg        = $msg ?? '';
+$error      = $error ?? '';
 ?>
 
 <div class="space-y-6">
@@ -15,6 +16,12 @@ $msg        = $msg ?? '';
     <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2">
       <i data-lucide="check-circle" class="w-4 h-4 text-emerald-600"></i>
       <span><?= htmlspecialchars($msg) ?></span>
+    </div>
+  <?php endif; ?>
+  <?php if (!empty($error)): ?>
+    <div class="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2">
+      <i data-lucide="alert-circle" class="w-4 h-4 text-rose-600"></i>
+      <span><?= htmlspecialchars($error) ?></span>
     </div>
   <?php endif; ?>
 
@@ -83,6 +90,7 @@ $msg        = $msg ?? '';
 
                     <!-- Toggle Bật/Tắt -->
                     <form method="post" action="/admin/cinema/promotions" class="inline">
+                      <?= csrf_field() ?>
                       <input type="hidden" name="action" value="toggle">
                       <input type="hidden" name="id" value="<?= $pr['id'] ?>">
                       <button type="submit" class="px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors <?= $pr['is_active'] ? 'bg-gray-50 hover:bg-gray-100 text-gray-600 border-gray-200' : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200' ?>">
@@ -92,6 +100,7 @@ $msg        = $msg ?? '';
 
                     <!-- Xóa -->
                     <form method="post" action="/admin/cinema/promotions" class="inline" onsubmit="return confirm('Bạn có chắc chắn muốn xóa mã voucher này?');">
+                      <?= csrf_field() ?>
                       <input type="hidden" name="action" value="delete">
                       <input type="hidden" name="id" value="<?= $pr['id'] ?>">
                       <button type="submit" class="p-1 rounded-lg text-red-600 hover:bg-red-50 transition-colors" title="Xóa voucher">
@@ -120,6 +129,7 @@ $msg        = $msg ?? '';
     </div>
 
     <form method="post" action="/admin/cinema/promotions" class="space-y-3.5 text-xs">
+      <?= csrf_field() ?>
       <input type="hidden" name="action" id="promo-form-action" value="add">
       <input type="hidden" name="id" id="promo-form-id" value="">
 

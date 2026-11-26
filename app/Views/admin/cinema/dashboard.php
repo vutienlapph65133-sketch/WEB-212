@@ -11,6 +11,11 @@ $totalTickets = $totalTickets ?? 0;
 $totalOrders  = $totalOrders ?? 0;
 $totalUsers   = $totalUsers ?? 0;
 $totalMovies  = $totalMovies ?? 0;
+$totalCinemas = $totalCinemas ?? 0;
+$totalScreens = $totalScreens ?? 0;
+$topPayMethod = $topPayMethod ?? 'MOMO';
+$topPayPct    = $topPayPct ?? 0;
+$topMovies    = $topMovies ?? [];
 $recentOrders = $recentOrders ?? [];
 $chartLabels  = $chartLabels ?? ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 $chartData    = $chartData ?? [0, 0, 0, 0, 0, 0, 0];
@@ -107,16 +112,30 @@ $chartData    = $chartData ?? [0, 0, 0, 0, 0, 0, 0];
         </div>
         <div class="flex items-center justify-between p-3 rounded-xl bg-gray-50">
           <span class="font-semibold text-gray-700">Tổng số rạp</span>
-          <span class="font-bold text-gray-900">4 cụm rạp</span>
+          <span class="font-bold text-gray-900"><?= (int)$totalCinemas ?> cụm rạp</span>
         </div>
         <div class="flex items-center justify-between p-3 rounded-xl bg-gray-50">
           <span class="font-semibold text-gray-700">Phòng chiếu kích hoạt</span>
-          <span class="font-bold text-gray-900">36 phòng</span>
+          <span class="font-bold text-gray-900"><?= (int)$totalScreens ?> phòng</span>
         </div>
         <div class="flex items-center justify-between p-3 rounded-xl bg-gray-50">
-          <span class="font-semibold text-gray-700">Tỉ lệ thanh toán MoMo</span>
-          <span class="font-bold text-pink-600">65%</span>
+          <span class="font-semibold text-gray-700">Thanh toán phổ biến (<?= htmlspecialchars($topPayMethod) ?>)</span>
+          <span class="font-bold text-pink-600"><?= (int)$topPayPct ?>%</span>
         </div>
+      </div>
+
+      <div class="border-t border-gray-100 pt-4 space-y-2.5">
+        <h4 class="font-bold text-xs text-gray-900 uppercase tracking-wider">Top Phim bán chạy</h4>
+        <?php if (empty($topMovies)): ?>
+          <p class="text-xs text-gray-400">Chưa có dữ liệu vé bán.</p>
+        <?php else: ?>
+          <?php foreach ($topMovies as $tm): ?>
+            <div class="flex items-center justify-between text-xs py-1">
+              <span class="font-semibold text-gray-700 truncate pr-2"><?= htmlspecialchars($tm['title']) ?></span>
+              <span class="shrink-0 font-bold text-blue-600"><?= (int)$tm['tickets_sold'] ?> vé</span>
+            </div>
+          <?php endforeach; ?>
+        <?php endif; ?>
       </div>
     </div>
   </div>

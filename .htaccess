@@ -3,3 +3,4 @@
 RewriteEngine On
 RewriteRule ^(app|database)(/|$) - [F,L]
 RewriteRule ^README\.md$ - [F,L]
+RewriteRule ^$ public/ [R=302,L]

@@ -22,21 +22,28 @@ class CinemaController
 
         $genresList = $pdo->query("SELECT * FROM genres ORDER BY name ASC")->fetchAll();
 
-        $sql = "SELECT m.*, GROUP_CONCAT(g.name SEPARATOR ', ') AS genre_names
+        $sql = "SELECT m.*, GROUP_CONCAT(DISTINCT g.name ORDER BY g.name SEPARATOR ', ') AS genre_names
                 FROM movies m
                 LEFT JOIN movie_genres mg ON mg.movie_id = m.id
                 LEFT JOIN genres g ON g.id = mg.genre_id";
 
         $params = [];
-        $where = [];
+        $where = ["m.status != 'stopped'"];
 
         if ($search !== '') {
-            $where[] = "(m.title LIKE ? OR m.description LIKE ?)";
-            $params[] = "%{$search}%";
-            $params[] = "%{$search}%";
+            $where[] = "(m.title LIKE ? OR m.description LIKE ? OR m.cast_list LIKE ? OR m.director LIKE ?)";
+            $like = "%{$search}%";
+            $params[] = $like;
+            $params[] = $like;
+            $params[] = $like;
+            $params[] = $like;
         }
         if ($selectedGenre !== '') {
-            $where[] = "g.name = ?";
+            $where[] = "EXISTS (
+                SELECT 1 FROM movie_genres mg2
+                JOIN genres g2 ON g2.id = mg2.genre_id
+                WHERE mg2.movie_id = m.id AND g2.name = ?
+            )";
             $params[] = $selectedGenre;
         }
 
@@ -117,6 +124,7 @@ class CinemaController
             'status'      => $row['status'],
             'ageRating'   => $row['age_rating'] ?: 'P',
             'language'    => $row['language'] ?: 'Tiếng Việt - Phụ đề',
+            'trailerUrl'  => $row['trailer_url'] ?: '',
         ];
 
         $cinemas = $pdo->query("SELECT * FROM cinemas ORDER BY id ASC")->fetchAll();
@@ -173,6 +181,30 @@ class CinemaController
             redirect('/cinema');
         }
 
+        $screenId = (int)$showtime['screen_id'];
+        $seatRowsStmt = $pdo->prepare(
+            "SELECT se.row_label, se.seat_number, se.seat_type, st.name AS type_name, st.surcharge
+             FROM seats se
+             JOIN seat_types st ON st.code = se.seat_type
+             WHERE se.screen_id = ?
+             ORDER BY se.row_label ASC, se.seat_number ASC"
+        );
+        $seatRowsStmt->execute([$screenId]);
+        $dbSeats = $seatRowsStmt->fetchAll();
+
+        // Nếu phòng chiếu chưa có ghế trong CSDL (rạp tạo trước đây), tự động khởi tạo
+        if (empty($dbSeats)) {
+            seedScreenSeats($pdo, $screenId);
+            $seatRowsStmt->execute([$screenId]);
+            $dbSeats = $seatRowsStmt->fetchAll();
+        }
+
+        $seatMap = [];
+        foreach ($dbSeats as $ds) {
+            $seatMap[$ds['row_label']][(int)$ds['seat_number']] = $ds;
+        }
+        $seatTypes = $pdo->query("SELECT code, name, surcharge FROM seat_types")->fetchAll(PDO::FETCH_UNIQUE);
+
         $soldStmt = $pdo->prepare(
             "SELECT CONCAT(se.row_label, se.seat_number) AS code
              FROM order_seats os
@@ -185,7 +217,7 @@ class CinemaController
 
         $combos = $pdo->query("SELECT id, name, description AS `desc`, icon, price FROM combos WHERE is_active = 1 ORDER BY id ASC")->fetchAll();
 
-        return view('client/cinema/seats', compact('showtime', 'showtimeId', 'soldSeats', 'combos'));
+        return view('client/cinema/seats', compact('showtime', 'showtimeId', 'seatMap', 'seatTypes', 'soldSeats', 'combos'));
     }
 
     /**
@@ -223,23 +255,41 @@ class CinemaController
 
         // ── XỬ LÝ POST: KHÁCH HÀNG XÁC NHẬN ĐẶT VÉ & THANH TOÁN ──
         if (isPost()) {
-            if (!csrf_check()) {
-                $_SESSION['checkout_error'] = 'Phiên làm việc đã hết hạn, vui lòng thử lại.';
-                redirect('/cinema');
-            }
-
             $showtimeId     = (int)($_POST['showtime_id'] ?? 0);
             $seatsParam     = trim($_POST['seats'] ?? '');
             $combosJson     = trim($_POST['combos'] ?? '{}');
             $customerName   = trim($_POST['customer_name'] ?? '');
-            $customerPhone  = trim($_POST['customer_phone'] ?? '');
+            $customerPhone  = preg_replace('/\s+/', '', trim($_POST['customer_phone'] ?? ''));
             $customerEmail  = trim($_POST['customer_email'] ?? '');
             $paymentMethod  = trim($_POST['payment_method'] ?? 'momo');
             $promoCode      = strtoupper(trim($_POST['promo_code'] ?? ''));
             $pointsWanted   = max(0, (int)($_POST['points_used'] ?? 0));
 
-            if (!$showtimeId || empty($seatsParam) || empty($customerName) || empty($customerPhone)) {
+            $checkoutBackUrl = '/cinema/checkout?showtime_id=' . $showtimeId
+                . '&seats=' . urlencode($seatsParam)
+                . '&combos=' . urlencode($combosJson);
+
+            if (!csrf_check()) {
+                $_SESSION['checkout_error'] = 'Phiên làm việc đã hết hạn, vui lòng thử lại.';
+                redirect($showtimeId ? $checkoutBackUrl : '/cinema');
+            }
+
+            if (!$showtimeId || $seatsParam === '') {
                 redirect('/cinema');
+            }
+
+            if ($customerName === '' || !preg_match('/^0\d{8,10}$/', $customerPhone)) {
+                $_SESSION['checkout_error'] = 'Vui lòng nhập họ tên và số điện thoại hợp lệ (bắt đầu bằng 0, 9-11 số).';
+                redirect($checkoutBackUrl);
+            }
+
+            if ($customerEmail !== '' && !filter_var($customerEmail, FILTER_VALIDATE_EMAIL)) {
+                $_SESSION['checkout_error'] = 'Địa chỉ email không hợp lệ.';
+                redirect($checkoutBackUrl);
+            }
+
+            if (!in_array($paymentMethod, ['momo', 'vnpay', 'card', 'zalopay'], true)) {
+                $paymentMethod = 'momo';
             }
 
             $stmt = $pdo->prepare("SELECT s.*, sc.id as screen_id FROM showtimes s JOIN screens sc ON sc.id = s.screen_id WHERE s.id = ?");
@@ -249,7 +299,10 @@ class CinemaController
                 redirect('/cinema');
             }
 
-            $seatCodes = array_values(array_filter(array_map('trim', explode(',', $seatsParam))));
+            $seatCodes = array_values(array_unique(array_filter(
+                array_map('trim', explode(',', strtoupper($seatsParam))),
+                fn($s) => preg_match('/^[A-Z][0-9]{1,2}$/', $s) === 1
+            )));
             if (empty($seatCodes)) {
                 redirect('/cinema/seats?showtime_id=' . $showtimeId);
             }
@@ -265,7 +318,8 @@ class CinemaController
             $seatQuery->execute(array_merge([$showtime['screen_id']], $seatCodes));
             $selectedSeats = $seatQuery->fetchAll();
 
-            if (empty($selectedSeats)) {
+            if (count($selectedSeats) !== count($seatCodes)) {
+                $_SESSION['checkout_error'] = 'Một số ghế bạn chọn không hợp lệ trong phòng chiếu này.';
                 redirect('/cinema/seats?showtime_id=' . $showtimeId);
             }
 
@@ -329,13 +383,15 @@ class CinemaController
                 $promoStmt = $pdo->prepare("SELECT * FROM promotions WHERE code = ? AND is_active = 1 AND (expires_at IS NULL OR expires_at > NOW()) LIMIT 1");
                 $promoStmt->execute([$promoCode]);
                 $promo = $promoStmt->fetch();
-                if ($promo) {
-                    $promotionId = $promo['id'];
-                    if ($promo['discount_type'] === 'percent') {
-                        $discount = (int)round(($ticketsTotal + $combosTotal) * ($promo['discount_value'] / 100));
-                    } else {
-                        $discount = (int)$promo['discount_value'];
-                    }
+                if (!$promo) {
+                    $_SESSION['checkout_error'] = "Mã giảm giá '{$promoCode}' không hợp lệ hoặc đã hết hạn.";
+                    redirect($checkoutBackUrl);
+                }
+                $promotionId = $promo['id'];
+                if ($promo['discount_type'] === 'percent') {
+                    $discount = (int)round(($ticketsTotal + $combosTotal) * ($promo['discount_value'] / 100));
+                } else {
+                    $discount = (int)$promo['discount_value'];
                 }
             }
 
@@ -355,8 +411,11 @@ class CinemaController
                 }
 
                 $pointsUsed = 0;
-                if ($userId && $pointsWanted > 0) {
+                if ($userId && $pointsWanted >= Loyalty::MIN_REDEEM) {
                     $pointsUsed = min($pointsWanted, Loyalty::maxRedeem($afterPromo, $balance));
+                    if ($pointsUsed < Loyalty::MIN_REDEEM) {
+                        $pointsUsed = 0;
+                    }
                 }
                 $pointsDiscount = $pointsUsed * Loyalty::POINT_VALUE;
                 $grandTotal     = max(0, $afterPromo - $pointsDiscount);
@@ -440,7 +499,7 @@ class CinemaController
             redirect('/cinema');
         }
 
-        $seatList = array_values(array_filter(array_map('trim', explode(',', $seatsParam)), fn($s) => preg_match('/^[A-Z][0-9]{1,2}$/', $s)));
+        $seatList = array_values(array_unique(array_filter(array_map('trim', explode(',', strtoupper($seatsParam))), fn($s) => preg_match('/^[A-Z][0-9]{1,2}$/', $s))));
         if (empty($seatList)) {
             redirect('/cinema/seats?showtime_id=' . $showtimeId);
         }
@@ -450,11 +509,29 @@ class CinemaController
         $sQuery = $pdo->prepare("SELECT se.*, st.surcharge FROM seats se JOIN seat_types st ON st.code = se.seat_type WHERE se.screen_id = ? AND CONCAT(se.row_label, se.seat_number) IN ($placeholders)");
         $sQuery->execute(array_merge([$showtime['screen_id']], $seatList));
         $foundSeats = $sQuery->fetchAll();
+        if (count($foundSeats) !== count($seatList)) {
+            $_SESSION['checkout_error'] = 'Một số ghế không hợp lệ, vui lòng chọn lại.';
+            redirect('/cinema/seats?showtime_id=' . $showtimeId);
+        }
+
+        $seatIds = array_column($foundSeats, 'id');
+        $seatIdPh = implode(',', array_fill(0, count($seatIds), '?'));
+        $soldCheck = $pdo->prepare(
+            "SELECT CONCAT(se.row_label, se.seat_number)
+             FROM order_seats os
+             JOIN seats se ON se.id = os.seat_id
+             JOIN orders o ON o.id = os.order_id
+             WHERE os.showtime_id = ? AND os.seat_id IN ($seatIdPh) AND o.status != 'cancelled'"
+        );
+        $soldCheck->execute(array_merge([$showtimeId], $seatIds));
+        $alreadySold = $soldCheck->fetchAll(PDO::FETCH_COLUMN);
+        if (!empty($alreadySold)) {
+            $_SESSION['checkout_error'] = 'Ghế (' . implode(', ', $alreadySold) . ') đã có người đặt. Vui lòng chọn ghế khác.';
+            redirect('/cinema/seats?showtime_id=' . $showtimeId);
+        }
+
         foreach ($foundSeats as $fs) {
             $ticketTotal += (int)$showtime['base_price'] + (int)$fs['surcharge'];
-        }
-        if ($ticketTotal === 0) {
-            $ticketTotal = count($seatList) * (int)$showtime['base_price'];
         }
 
         $comboTotal = 0;
@@ -559,8 +636,8 @@ class CinemaController
     public function ticket()
     {
         $pdo = Database::pdo();
-        $code = trim($_GET['code'] ?? $_POST['search_code'] ?? '');
-        $phone = trim($_POST['search_phone'] ?? '');
+        $code = strtoupper(trim($_GET['code'] ?? $_POST['search_code'] ?? ''));
+        $phone = preg_replace('/\s+/', '', trim($_POST['search_phone'] ?? ''));
 
         $order = null;
         $seats = [];
@@ -635,6 +712,98 @@ class CinemaController
             'searchResults',
             'searched'
         ));
+    }
+
+    /**
+     * Danh sách vé đã đặt của khách hàng đang đăng nhập ("Vé của tôi")
+     */
+    public function myTickets()
+    {
+        $user = currentUser();
+        if (!$user) {
+            redirect('/login');
+        }
+        $pdo = Database::pdo();
+        $stmt = $pdo->prepare(
+            "SELECT o.*, s.starts_at, s.format, m.title AS movie_title, m.poster,
+                    sc.name AS screen_name, c.name AS cinema_name,
+                    GROUP_CONCAT(CONCAT(se.row_label, se.seat_number) ORDER BY se.row_label, se.seat_number SEPARATOR ', ') AS seats_list
+             FROM orders o
+             JOIN showtimes s ON s.id = o.showtime_id
+             JOIN movies m ON m.id = s.movie_id
+             JOIN screens sc ON sc.id = s.screen_id
+             JOIN cinemas c ON c.id = sc.cinema_id
+             LEFT JOIN order_seats os ON os.order_id = o.id
+             LEFT JOIN seats se ON se.id = os.seat_id
+             WHERE o.user_id = ?
+             GROUP BY o.id
+             ORDER BY o.created_at DESC"
+        );
+        $stmt->execute([$user['id']]);
+        $orders = $stmt->fetchAll();
+
+        return view('client/cinema/my_tickets', compact('orders', 'user'));
+    }
+
+    /**
+     * Hồ sơ tài khoản & Đổi mật khẩu khách hàng
+     */
+    public function profile()
+    {
+        $user = currentUser();
+        if (!$user) {
+            redirect('/login');
+        }
+        $pdo = Database::pdo();
+        $errors = [];
+        $success = '';
+
+        if (isPost()) {
+            $action = $_POST['action'] ?? '';
+            if (!csrf_check()) {
+                $errors['form'] = 'Phiên làm việc đã hết hạn, vui lòng thử lại.';
+            } elseif ($action === 'update_info') {
+                $fullName = trim($_POST['full_name'] ?? '');
+                $phone    = preg_replace('/\s+/', '', trim($_POST['phone'] ?? ''));
+
+                $len = str_len($fullName);
+                if ($len < 2 || $len > 100) {
+                    $errors['full_name'] = 'Họ tên phải từ 2 đến 100 ký tự.';
+                }
+                if ($phone !== '' && !preg_match('/^0\d{9}$/', $phone)) {
+                    $errors['phone'] = 'Số điện thoại phải gồm 10 số, bắt đầu bằng 0.';
+                }
+
+                if (!$errors) {
+                    $pdo->prepare('UPDATE users SET full_name = ?, phone = ? WHERE id = ?')
+                        ->execute([$fullName, $phone !== '' ? $phone : null, $user['id']]);
+                    $user = currentUser();
+                    $success = 'Đã cập nhật thông tin cá nhân!';
+                }
+            } elseif ($action === 'change_password') {
+                $curPass  = (string)($_POST['current_password'] ?? '');
+                $newPass  = (string)($_POST['new_password'] ?? '');
+                $newPass2 = (string)($_POST['confirm_password'] ?? '');
+
+                $st = $pdo->prepare('SELECT password_hash FROM users WHERE id = ? LIMIT 1');
+                $st->execute([$user['id']]);
+                $hash = (string)$st->fetchColumn();
+
+                if (!password_verify($curPass, $hash)) {
+                    $errors['current_password'] = 'Mật khẩu hiện tại không đúng.';
+                } elseif (strlen($newPass) < 6) {
+                    $errors['new_password'] = 'Mật khẩu mới tối thiểu 6 ký tự.';
+                } elseif ($newPass !== $newPass2) {
+                    $errors['confirm_password'] = 'Mật khẩu nhập lại không khớp.';
+                } else {
+                    $pdo->prepare('UPDATE users SET password_hash = ? WHERE id = ?')
+                        ->execute([password_hash($newPass, PASSWORD_DEFAULT), $user['id']]);
+                    $success = 'Đã đổi mật khẩu thành công!';
+                }
+            }
+        }
+
+        return view('client/cinema/profile', compact('user', 'errors', 'success'));
     }
 
     /**

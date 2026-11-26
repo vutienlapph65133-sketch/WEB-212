@@ -108,6 +108,7 @@ $selectedGenre = $selectedGenre ?? '';
 
 <!-- ─── Movies Grid Section ─── -->
 <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12" id="now-showing">
+  <span id="coming-soon" class="block -mt-20 pt-20 pointer-events-none"></span>
   <!-- Tabs bar -->
   <div class="flex items-center justify-between border-b border-gray-800 pb-4 mb-8">
     <div class="flex gap-4 sm:gap-8">
@@ -203,10 +204,22 @@ $selectedGenre = $selectedGenre ?? '';
     });
   }
 
-  // Khởi tạo tab mặc định
-  document.addEventListener('DOMContentLoaded', () => {
-    switchTab('now_showing');
-  });
+  function syncTabFromHashOrResult() {
+    if (window.location.hash === '#coming-soon') {
+      switchTab('coming_soon');
+      return;
+    }
+    if (window.location.hash === '#now-showing') {
+      switchTab('now_showing');
+      return;
+    }
+    const defaultTab = <?= (empty($nowShowing) && !empty($comingSoon)) ? "'coming_soon'" : "'now_showing'" ?>;
+    switchTab(defaultTab);
+  }
+
+  // Khởi tạo tab mặc định & lắng nghe đổi hash (#coming-soon / #now-showing)
+  document.addEventListener('DOMContentLoaded', syncTabFromHashOrResult);
+  window.addEventListener('hashchange', syncTabFromHashOrResult);
 </script>
 
 <?php include __DIR__ . '/layouts/footer.php'; ?>

@@ -75,6 +75,23 @@ function csrf_check(): bool
     return isset($_POST['csrf'], $_SESSION['csrf']) && hash_equals($_SESSION['csrf'], (string) $_POST['csrf']);
 }
 
+function csrf_field(): string
+{
+    return '<input type="hidden" name="csrf" value="' . htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') . '">';
+}
+
+/** Tạo đủ 96 ghế mặc định (A-H x 1-12) cho một phòng chiếu mới */
+function seedScreenSeats(\PDO $pdo, int $screenId): void
+{
+    $st = $pdo->prepare('INSERT IGNORE INTO seats (screen_id, row_label, seat_number, seat_type) VALUES (?, ?, ?, ?)');
+    foreach (['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'] as $row) {
+        $type = in_array($row, ['D', 'E', 'F'], true) ? 'vip' : ($row === 'H' ? 'couple' : 'standard');
+        for ($col = 1; $col <= 12; $col++) {
+            $st->execute([$screenId, $row, $col, $type]);
+        }
+    }
+}
+
 // ---- Chống dò mật khẩu: sai 5 lần thì khóa 60 giây ----
 function loginLockedSeconds(): int
 {

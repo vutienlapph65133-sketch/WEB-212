@@ -52,6 +52,15 @@ $firstCinemaId = !empty($cinemas) ? $cinemas[0]['id'] : 1;
         <div><strong class="text-white">Khởi chiếu:</strong> <?= htmlspecialchars($movie['releaseDate']) ?></div>
         <div class="sm:col-span-2"><strong class="text-white">Diễn viên:</strong> <?= htmlspecialchars(implode(', ', $movie['cast'])) ?></div>
       </div>
+
+      <?php if (!empty($movie['trailerUrl'])): ?>
+        <div class="pt-2">
+          <button type="button" onclick="openTrailerModal()" class="inline-flex items-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-gray-950 font-bold px-5 py-2.5 text-xs transition-all shadow-lg shadow-amber-500/20">
+            <i data-lucide="play" class="w-4 h-4"></i>
+            Xem Trailer chính thức
+          </button>
+        </div>
+      <?php endif; ?>
     </div>
   </div>
 </div>
@@ -144,6 +153,39 @@ $firstCinemaId = !empty($cinemas) ? $cinemas[0]['id'] : 1;
   document.addEventListener('DOMContentLoaded', () => {
     selectCinema(<?= $firstCinemaId ?>);
   });
+
+  function openTrailerModal() {
+    const url = <?= json_encode($movie['trailerUrl'] ?? '') ?>;
+    if (!url) return;
+    const container = document.getElementById('trailer-player');
+    let embedUrl = '';
+    const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/);
+    if (ytMatch) {
+      embedUrl = 'https://www.youtube.com/embed/' + ytMatch[1] + '?autoplay=1';
+      container.innerHTML = '<iframe class="w-full h-full rounded-2xl" src="' + embedUrl + '" allow="autoplay; encrypted-media" allowfullscreen></iframe>';
+    } else if (/^https?:\/\//i.test(url)) {
+      container.innerHTML = '<video class="w-full h-full rounded-2xl bg-black" controls autoplay src="' + url.replace(/"/g, '&quot;') + '"></video>';
+    }
+    document.getElementById('trailer-modal').classList.remove('hidden');
+  }
+
+  function closeTrailerModal() {
+    document.getElementById('trailer-player').innerHTML = '';
+    document.getElementById('trailer-modal').classList.add('hidden');
+  }
 </script>
+
+<!-- Trailer Modal -->
+<div id="trailer-modal" onclick="if(event.target===this) closeTrailerModal()" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-gray-900 border border-gray-800 rounded-3xl max-w-3xl w-full p-4 sm:p-6 shadow-2xl space-y-3">
+    <div class="flex items-center justify-between">
+      <h3 class="text-sm font-bold text-white">Trailer: <?= htmlspecialchars($movie['title'] ?? '') ?></h3>
+      <button type="button" onclick="closeTrailerModal()" class="p-1.5 rounded-lg hover:bg-gray-800 text-gray-400">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <div id="trailer-player" class="aspect-video w-full bg-black rounded-2xl overflow-hidden"></div>
+  </div>
+</div>
 
 <?php include __DIR__ . '/layouts/footer.php'; ?>

@@ -25,6 +25,18 @@ $defaultPhone = $user['phone'] ?? '';
 ?>
 
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <?php if (!empty($_SESSION['checkout_error'])): ?>
+    <div class="mb-6 p-4 rounded-2xl bg-red-950/60 border border-red-500/50 text-red-300 text-xs flex items-center justify-between">
+      <span><?= htmlspecialchars($_SESSION['checkout_error']) ?></span>
+      <?php unset($_SESSION['checkout_error']); ?>
+    </div>
+  <?php endif; ?>
+
+  <div id="timeout-banner" class="hidden mb-6 p-4 rounded-2xl bg-red-950/60 border border-red-500/50 text-red-300 text-xs flex flex-wrap items-center justify-between gap-3">
+    <span>Đã hết thời gian 10 phút giữ ghế. Vui lòng chọn lại ghế để tiếp tục đặt vé.</span>
+    <a href="/cinema/seats?showtime_id=<?= $showtimeId ?>" class="px-4 py-1.5 rounded-xl bg-amber-500 text-gray-950 font-bold hover:bg-amber-400">Chọn lại ghế</a>
+  </div>
+
   <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
     <a href="/cinema/seats?showtime_id=<?= $showtimeId ?>" class="inline-flex items-center gap-2 text-xs text-gray-400 hover:text-white">
       <i data-lucide="arrow-left" class="w-4 h-4"></i> Quay lại chọn ghế
@@ -102,6 +114,17 @@ $defaultPhone = $user['phone'] ?? '';
                 <div>
                   <p class="text-xs font-bold text-white">Cổng VNPAY</p>
                   <p class="text-[11px] text-gray-400">Ứng dụng ngân hàng & VNPAY-QR</p>
+                </div>
+              </div>
+            </label>
+
+            <label class="flex items-center justify-between p-4 rounded-2xl border border-gray-800 hover:border-gray-700 bg-gray-950/60 cursor-pointer">
+              <div class="flex items-center gap-3">
+                <input type="radio" name="payment_method" value="zalopay" class="accent-cyan-500 w-4 h-4">
+                <span class="w-9 h-9 rounded-xl bg-cyan-600/20 border border-cyan-500/30 flex items-center justify-center font-bold text-cyan-400 text-[10px]">ZaloPay</span>
+                <div>
+                  <p class="text-xs font-bold text-white">Ví ZaloPay</p>
+                  <p class="text-[11px] text-gray-400">Thanh toán nhanh qua ứng dụng Zalo / ZaloPay</p>
                 </div>
               </div>
             </label>
@@ -238,7 +261,7 @@ $defaultPhone = $user['phone'] ?? '';
             </div>
           </div>
 
-          <button type="submit" class="w-full py-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-gray-950 font-extrabold text-sm transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 cursor-pointer">
+          <button type="submit" id="checkout-submit-btn" class="w-full py-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-gray-950 font-extrabold text-sm transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 cursor-pointer">
             <i data-lucide="lock" class="w-4 h-4"></i>
             Xác nhận thanh toán
           </button>
@@ -250,14 +273,26 @@ $defaultPhone = $user['phone'] ?? '';
 
 <script>
   let timeLeft = 600;
-  setInterval(() => {
-    if (timeLeft <= 0) return;
+  const countdownTimer = setInterval(() => {
+    if (timeLeft <= 0) {
+      clearInterval(countdownTimer);
+      document.getElementById('timeout-banner')?.classList.remove('hidden');
+      const btn = document.getElementById('checkout-submit-btn');
+      if (btn) btn.disabled = true;
+      return;
+    }
     timeLeft--;
     const mins = Math.floor(timeLeft / 60);
     const secs = timeLeft % 60;
     const el = document.getElementById('timer');
     if (el) {
       el.innerText = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+    }
+    if (timeLeft === 0) {
+      clearInterval(countdownTimer);
+      document.getElementById('timeout-banner')?.classList.remove('hidden');
+      const btn = document.getElementById('checkout-submit-btn');
+      if (btn) btn.disabled = true;
     }
   }, 1000);
 

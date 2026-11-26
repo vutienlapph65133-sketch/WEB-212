@@ -6,8 +6,10 @@ $pageTitle = 'Quản Lý Phim - MovieGo Admin';
 $activeMenu = 'movies';
 include __DIR__ . '/layouts/sidebar.php';
 
-$movies = $movies ?? [];
-$msg    = $msg ?? '';
+$movies     = $movies ?? [];
+$genresList = $genresList ?? [];
+$msg        = $msg ?? '';
+$error      = $error ?? '';
 ?>
 
 <div class="space-y-6">
@@ -15,6 +17,12 @@ $msg    = $msg ?? '';
     <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2">
       <i data-lucide="check-circle" class="w-4 h-4 text-emerald-600"></i>
       <span><?= htmlspecialchars($msg) ?></span>
+    </div>
+  <?php endif; ?>
+  <?php if (!empty($error)): ?>
+    <div class="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2">
+      <i data-lucide="alert-circle" class="w-4 h-4 text-rose-600"></i>
+      <span><?= htmlspecialchars($error) ?></span>
     </div>
   <?php endif; ?>
 
@@ -100,6 +108,7 @@ $msg    = $msg ?? '';
                   </button>
                   <!-- Xóa -->
                   <form method="post" action="/admin/cinema/movies" class="inline" onsubmit="return confirm('Bạn có chắc chắn muốn xóa phim này khỏi CSDL?');">
+                    <?= csrf_field() ?>
                     <input type="hidden" name="action" value="delete">
                     <input type="hidden" name="id" value="<?= $mv['id'] ?>">
                     <button type="submit" class="p-1.5 rounded-lg text-red-600 hover:bg-red-50 transition-colors" title="Xóa phim">
@@ -127,6 +136,7 @@ $msg    = $msg ?? '';
     </div>
 
     <form method="post" action="/admin/cinema/movies" id="movie-form" class="space-y-3.5 text-xs">
+      <?= csrf_field() ?>
       <input type="hidden" name="action" id="form-action" value="add">
       <input type="hidden" name="id" id="form-id" value="">
 
@@ -135,14 +145,18 @@ $msg    = $msg ?? '';
         <input type="text" name="title" id="form-title" required placeholder="Nhập tên phim..." class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-blue-600">
       </div>
 
-      <div class="grid grid-cols-2 gap-3">
+      <div class="grid grid-cols-3 gap-3">
         <div>
           <label class="block font-semibold text-gray-700 mb-1">Thời lượng (phút)</label>
           <input type="number" name="duration" id="form-duration" value="120" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-blue-600">
         </div>
         <div>
-          <label class="block font-semibold text-gray-700 mb-1">Đánh giá (thang 10)</label>
-          <input type="number" step="0.1" name="rating" id="form-rating" value="8.5" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-blue-600">
+          <label class="block font-semibold text-gray-700 mb-1">Đánh giá (0-10)</label>
+          <input type="number" step="0.1" min="0" max="10" name="rating" id="form-rating" value="8.5" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-blue-600">
+        </div>
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">Ngày khởi chiếu</label>
+          <input type="date" name="release_date" id="form-release-date" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-blue-600">
         </div>
       </div>
 
@@ -166,9 +180,50 @@ $msg    = $msg ?? '';
         </div>
       </div>
 
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">Đạo diễn</label>
+          <input type="text" name="director" id="form-director" placeholder="VD: Joe Russo" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-blue-600">
+        </div>
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">Ngôn ngữ</label>
+          <input type="text" name="language" id="form-language" value="Tiếng Anh - Phụ đề Tiếng Việt" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-blue-600">
+        </div>
+      </div>
+
       <div>
-        <label class="block font-semibold text-gray-700 mb-1">Link ảnh Poster (URL)</label>
-        <input type="url" name="poster" id="form-poster" placeholder="https://..." class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-blue-600">
+        <label class="block font-semibold text-gray-700 mb-1">Diễn viên (cách nhau bằng dấu phẩy)</label>
+        <input type="text" name="cast_list" id="form-cast" placeholder="VD: Robert Downey Jr., Tom Holland" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-blue-600">
+      </div>
+
+      <?php if (!empty($genresList)): ?>
+      <div>
+        <label class="block font-semibold text-gray-700 mb-1.5">Thể loại</label>
+        <div class="flex flex-wrap gap-2 bg-gray-50 border border-gray-200 rounded-xl p-2.5">
+          <?php foreach ($genresList as $gn): ?>
+            <label class="inline-flex items-center gap-1.5 text-[11px] text-gray-700 cursor-pointer">
+              <input type="checkbox" name="genres[]" value="<?= (int)$gn['id'] ?>" class="genre-checkbox rounded text-blue-600">
+              <span><?= htmlspecialchars($gn['name']) ?></span>
+            </label>
+          <?php endforeach; ?>
+        </div>
+      </div>
+      <?php endif; ?>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">Link ảnh Poster (URL)</label>
+          <input type="url" name="poster" id="form-poster" placeholder="https://..." class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-blue-600">
+        </div>
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">Link ảnh Nền / Backdrop</label>
+          <input type="url" name="backdrop" id="form-backdrop" placeholder="https://..." class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-blue-600">
+        </div>
+      </div>
+
+      <div>
+        <label class="block font-semibold text-gray-700 mb-1">Link Trailer (YouTube hoặc MP4 URL)</label>
+        <input type="url" name="trailer_url" id="form-trailer" placeholder="https://www.youtube.com/watch?v=..." class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-blue-600">
       </div>
 
       <div>
@@ -202,8 +257,17 @@ $msg    = $msg ?? '';
     document.getElementById('form-title').value = '';
     document.getElementById('form-duration').value = '120';
     document.getElementById('form-rating').value = '8.0';
+    document.getElementById('form-release-date').value = '';
+    document.getElementById('form-age-rating').value = 'P';
+    document.getElementById('form-status').value = 'now_showing';
+    document.getElementById('form-director').value = '';
+    document.getElementById('form-language').value = 'Tiếng Anh - Phụ đề Tiếng Việt';
+    document.getElementById('form-cast').value = '';
     document.getElementById('form-poster').value = '';
+    document.getElementById('form-backdrop').value = '';
+    document.getElementById('form-trailer').value = '';
     document.getElementById('form-description').value = '';
+    document.querySelectorAll('.genre-checkbox').forEach(cb => cb.checked = false);
     document.getElementById('movie-modal').classList.remove('hidden');
   }
 
@@ -214,10 +278,20 @@ $msg    = $msg ?? '';
     document.getElementById('form-title').value = mv.title || '';
     document.getElementById('form-duration').value = mv.duration || 120;
     document.getElementById('form-rating').value = mv.rating || 8.0;
+    document.getElementById('form-release-date').value = mv.release_date || '';
     document.getElementById('form-age-rating').value = mv.age_rating || 'P';
     document.getElementById('form-status').value = mv.status || 'now_showing';
+    document.getElementById('form-director').value = mv.director || '';
+    document.getElementById('form-language').value = mv.language || '';
+    document.getElementById('form-cast').value = mv.cast_list || '';
     document.getElementById('form-poster').value = mv.poster || '';
+    document.getElementById('form-backdrop').value = mv.backdrop || '';
+    document.getElementById('form-trailer').value = mv.trailer_url || '';
     document.getElementById('form-description').value = mv.description || '';
+    const gIds = (mv.genre_ids ? String(mv.genre_ids).split(',') : []);
+    document.querySelectorAll('.genre-checkbox').forEach(cb => {
+      cb.checked = gIds.includes(String(cb.value));
+    });
     document.getElementById('movie-modal').classList.remove('hidden');
   }
 

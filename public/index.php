@@ -77,6 +77,8 @@ switch ($path) {
     case '/cinema/promotions':      echo $client->promotions();break;
     case '/cinema/points':          echo $client->points();    break;
     case '/cinema/ticket':          echo $client->ticket();    break;
+    case '/cinema/my-tickets':      echo $client->myTickets(); break;
+    case '/cinema/profile':         echo $client->profile();   break;
     case '/cinema/spa':             echo $client->spa();       break;
 
     case '/login':                  echo $auth->login();       break;
@@ -90,6 +92,7 @@ switch ($path) {
     case '/admin/cinema/movies':    echo $admin->movies();     break;
     case '/admin/cinema/cinemas':   echo $admin->cinemas();    break;
     case '/admin/cinema/showtimes': echo $admin->showtimes();  break;
+    case '/admin/cinema/combos':    echo $admin->combos();     break;
     case '/admin/cinema/orders':    echo $admin->orders();     break;
     case '/admin/cinema/promotions':echo $admin->promotions(); break;
     case '/admin/cinema/users':     echo $admin->users();      break;

@@ -46,7 +46,7 @@ $__u = function_exists('currentUser') ? currentUser() : ($_SESSION['user'] ?? nu
 <body class="bg-gray-950 text-white min-h-screen flex flex-col antialiased selection:bg-amber-500 selection:text-gray-950">
 
   <!-- Navbar Sticky Glassmorphism -->
-  <header class="sticky top-0 z-50 bg-gray-950/90 backdrop-blur-md border-b border-gray-800">
+  <header class="sticky top-0 z-50 bg-gray-950/90 backdrop-blur-md border-b border-gray-800 print:hidden">
     <div class="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
       <!-- Logo -->
       <a href="/cinema" class="flex items-center gap-2.5 text-xl font-extrabold tracking-wide">
@@ -64,6 +64,7 @@ $__u = function_exists('currentUser') ? currentUser() : ($_SESSION['user'] ?? nu
         <a href="/cinema/promotions" class="text-gray-300 hover:text-amber-400 transition-colors">Khuyến mãi</a>
         <a href="/cinema/ticket" class="text-gray-300 hover:text-amber-400 transition-colors">Tra cứu vé</a>
         <?php if ($__u): ?>
+          <a href="/cinema/my-tickets" class="text-gray-300 hover:text-amber-400 transition-colors">Vé của tôi</a>
           <a href="/cinema/points" class="text-gray-300 hover:text-amber-400 transition-colors">Điểm thưởng</a>
         <?php endif; ?>
       </nav>
@@ -84,9 +85,9 @@ $__u = function_exists('currentUser') ? currentUser() : ($_SESSION['user'] ?? nu
             <span>⭐</span>
             <span><?= number_format((int)($__u['points_balance'] ?? 0), 0, ',', '.') ?> điểm</span>
           </a>
-          <span class="hidden sm:inline text-xs font-semibold text-gray-300 max-w-[120px] truncate" title="<?= $h($__u['email']) ?>">
+          <a href="/cinema/profile" class="hidden sm:inline text-xs font-semibold text-gray-300 hover:text-amber-400 max-w-[120px] truncate transition-colors" title="Hồ sơ cá nhân (<?= $h($__u['email']) ?>)">
             <?= $h($__u['full_name']) ?>
-          </span>
+          </a>
           <form method="post" action="/logout" class="inline">
             <input type="hidden" name="csrf" value="<?= $h(function_exists('csrf_token') ? csrf_token() : '') ?>">
             <button type="submit" class="px-3 py-1.5 rounded-xl border border-gray-700 hover:border-amber-500/50 text-xs font-medium text-gray-300 hover:text-amber-400 transition-colors">Đăng xuất</button>
@@ -111,6 +112,8 @@ $__u = function_exists('currentUser') ? currentUser() : ($_SESSION['user'] ?? nu
       <a href="/cinema/promotions" class="block px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800">Khuyến mãi</a>
       <a href="/cinema/ticket" class="block px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800">Tra cứu vé</a>
       <?php if ($__u): ?>
+        <a href="/cinema/my-tickets" class="block px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800">Vé của tôi</a>
+        <a href="/cinema/profile" class="block px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800">Tài khoản (<?= $h($__u['full_name']) ?>)</a>
         <a href="/cinema/points" class="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold text-amber-400 bg-amber-500/10">
           <span>⭐ Điểm thưởng của bạn</span>
           <span><?= number_format((int)($__u['points_balance'] ?? 0), 0, ',', '.') ?> điểm</span>

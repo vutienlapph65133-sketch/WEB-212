@@ -8,6 +8,7 @@ include __DIR__ . '/layouts/sidebar.php';
 
 $orders = $orders ?? [];
 $msg    = $msg ?? '';
+$error  = $error ?? '';
 ?>
 
 <div class="space-y-6">
@@ -15,6 +16,12 @@ $msg    = $msg ?? '';
     <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2">
       <i data-lucide="check-circle" class="w-4 h-4 text-emerald-600"></i>
       <span><?= htmlspecialchars($msg) ?></span>
+    </div>
+  <?php endif; ?>
+  <?php if (!empty($error)): ?>
+    <div class="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2">
+      <i data-lucide="alert-circle" class="w-4 h-4 text-rose-600"></i>
+      <span><?= htmlspecialchars($error) ?></span>
     </div>
   <?php endif; ?>
 
@@ -79,15 +86,20 @@ $msg    = $msg ?? '';
                   <?php endif; ?>
                 </td>
                 <td class="py-3.5 px-4 text-right">
-                  <form method="post" action="/admin/cinema/orders" class="inline-flex items-center gap-1">
-                    <input type="hidden" name="action" value="update_status">
-                    <input type="hidden" name="id" value="<?= $od['id'] ?>">
-                    <select name="status" onchange="this.form.submit()" class="bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 text-[11px] text-gray-700 focus:outline-none focus:border-blue-600">
-                      <option value="completed" <?= $od['status'] === 'completed' ? 'selected' : '' ?>>Hoàn thành</option>
-                      <option value="pending" <?= $od['status'] === 'pending' ? 'selected' : '' ?>>Chờ xử lý</option>
-                      <option value="cancelled" <?= $od['status'] === 'cancelled' ? 'selected' : '' ?>>Hủy đơn</option>
-                    </select>
-                  </form>
+                  <?php if ($od['status'] === 'cancelled'): ?>
+                    <span class="text-[11px] text-gray-400 italic">Đã hủy & hoàn ghế</span>
+                  <?php else: ?>
+                    <form method="post" action="/admin/cinema/orders" class="inline-flex items-center gap-1">
+                      <?= csrf_field() ?>
+                      <input type="hidden" name="action" value="update_status">
+                      <input type="hidden" name="id" value="<?= (int)$od['id'] ?>">
+                      <select name="status" onchange="this.form.submit()" class="bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 text-[11px] text-gray-700 focus:outline-none focus:border-blue-600">
+                        <option value="completed" <?= $od['status'] === 'completed' ? 'selected' : '' ?>>Hoàn thành</option>
+                        <option value="pending" <?= $od['status'] === 'pending' ? 'selected' : '' ?>>Chờ xử lý</option>
+                        <option value="cancelled">Hủy đơn</option>
+                      </select>
+                    </form>
+                  <?php endif; ?>
                 </td>
               </tr>
             <?php endforeach; ?>

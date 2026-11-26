@@ -7,12 +7,16 @@ include __DIR__ . '/layouts/header.php';
 
 $showtimeId = (int)($showtimeId ?? 1);
 $showtime   = $showtime ?? [];
+$seatMap    = $seatMap ?? [];
+$seatTypes  = $seatTypes ?? [];
 $soldSeats  = $soldSeats ?? [];
 $combos     = $combos ?? [];
 
-// Hàng A-H, Cột 1-12
-$rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+$rows = !empty($seatMap) ? array_keys($seatMap) : ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 $basePrice = (int)($showtime['base_price'] ?? 75000);
+$vipSurcharge    = (int)($seatTypes['vip']['surcharge'] ?? 20000);
+$coupleSurcharge = (int)($seatTypes['couple']['surcharge'] ?? 85000);
+$stdSurcharge    = (int)($seatTypes['standard']['surcharge'] ?? 0);
 ?>
 
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -48,40 +52,44 @@ $basePrice = (int)($showtime['base_price'] ?? 75000);
       <!-- Seat Grid Container -->
       <div class="overflow-x-auto pb-4">
         <div class="min-w-[500px] flex flex-col gap-2.5 items-center">
-          <?php foreach ($rows as $row): 
-            $isVIP = in_array($row, ['D', 'E', 'F']);
-            $isCouple = ($row === 'H');
-            $surcharge = $isCouple ? 85000 : ($isVIP ? 20000 : 0);
-            $price = $basePrice + $surcharge;
+          <?php foreach ($rows as $row):
+            $rowSeats = $seatMap[$row] ?? [];
           ?>
             <div class="flex items-center gap-2">
-              <span class="w-6 text-xs font-bold text-gray-500 text-center"><?= $row ?></span>
+              <span class="w-6 text-xs font-bold text-gray-500 text-center"><?= htmlspecialchars($row) ?></span>
 
               <div class="flex gap-1.5 sm:gap-2">
-                <?php for ($col = 1; $col <= 12; $col++): 
-                  $seatId = $row . $col;
-                  $isSold = in_array($seatId, $soldSeats);
+                <?php for ($col = 1; $col <= 12; $col++):
+                  $dbSeat = $rowSeats[$col] ?? null;
+                  if (!empty($seatMap) && !$dbSeat) continue;
+                  $seatType  = $dbSeat['seat_type'] ?? ($row === 'H' ? 'couple' : (in_array($row, ['D', 'E', 'F'], true) ? 'vip' : 'standard'));
+                  $surcharge = $dbSeat ? (int)$dbSeat['surcharge'] : ($seatType === 'couple' ? $coupleSurcharge : ($seatType === 'vip' ? $vipSurcharge : $stdSurcharge));
+                  $price     = $basePrice + $surcharge;
+                  $isVIP     = ($seatType === 'vip');
+                  $isCouple  = ($seatType === 'couple');
+                  $seatId    = $row . $col;
+                  $isSold    = in_array($seatId, $soldSeats, true);
                 ?>
-                  <button 
-                    type="button" 
-                    id="seat-<?= $seatId ?>" 
-                    data-seat="<?= $seatId ?>" 
-                    data-price="<?= $price ?>" 
-                    data-type="<?= $isCouple ? 'couple' : ($isVIP ? 'vip' : 'standard') ?>"
+                  <button
+                    type="button"
+                    id="seat-<?= htmlspecialchars($seatId) ?>"
+                    data-seat="<?= htmlspecialchars($seatId) ?>"
+                    data-price="<?= $price ?>"
+                    data-type="<?= htmlspecialchars($seatType) ?>"
                     <?= $isSold ? 'disabled' : '' ?>
-                    onclick="toggleSeat('<?= $seatId ?>', <?= $price ?>)"
-                    class="seat-btn w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-[10px] font-bold flex items-center justify-center transition-all 
-                    <?= $isSold ? 'bg-red-950/40 text-red-500 border border-red-500/30 cursor-not-allowed opacity-50' : 
-                       ($isVIP ? 'bg-gray-800 text-gray-200 border border-amber-500/50 hover:bg-amber-500 hover:text-gray-950' : 
-                       ($isCouple ? 'bg-purple-950/60 text-purple-300 border border-purple-500/50 hover:bg-purple-500 hover:text-white' : 
+                    onclick="toggleSeat('<?= htmlspecialchars($seatId) ?>', <?= $price ?>)"
+                    class="seat-btn w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-[10px] font-bold flex items-center justify-center transition-all
+                    <?= $isSold ? 'bg-red-950/40 text-red-500 border border-red-500/30 cursor-not-allowed opacity-50' :
+                       ($isVIP ? 'bg-gray-800 text-gray-200 border border-amber-500/50 hover:bg-amber-500 hover:text-gray-950' :
+                       ($isCouple ? 'bg-purple-950/60 text-purple-300 border border-purple-500/50 hover:bg-purple-500 hover:text-white' :
                        'bg-gray-800 text-gray-300 hover:bg-amber-500 hover:text-gray-950 border border-gray-700')) ?>"
-                    title="Ghế <?= $seatId ?> - <?= number_format($price, 0, ',', '.') ?>₫">
+                    title="Ghế <?= htmlspecialchars($seatId) ?> - <?= number_format($price, 0, ',', '.') ?>₫">
                     <?= $col ?>
                   </button>
                 <?php endfor; ?>
               </div>
 
-              <span class="w-6 text-xs font-bold text-gray-500 text-center"><?= $row ?></span>
+              <span class="w-6 text-xs font-bold text-gray-500 text-center"><?= htmlspecialchars($row) ?></span>
             </div>
           <?php endforeach; ?>
         </div>
@@ -91,15 +99,15 @@ $basePrice = (int)($showtime['base_price'] ?? 75000);
       <div class="flex flex-wrap items-center justify-center gap-4 sm:gap-6 mt-8 pt-6 border-t border-gray-800 text-xs text-gray-400">
         <div class="flex items-center gap-2">
           <span class="w-4 h-4 rounded bg-gray-800 border border-gray-700"></span>
-          <span>Thường (<?= number_format($basePrice, 0, ',', '.') ?>₫)</span>
+          <span>Thường (<?= number_format($basePrice + $stdSurcharge, 0, ',', '.') ?>₫)</span>
         </div>
         <div class="flex items-center gap-2">
           <span class="w-4 h-4 rounded bg-gray-800 border border-amber-500/60"></span>
-          <span>VIP (<?= number_format($basePrice + 20000, 0, ',', '.') ?>₫)</span>
+          <span>VIP (<?= number_format($basePrice + $vipSurcharge, 0, ',', '.') ?>₫)</span>
         </div>
         <div class="flex items-center gap-2">
           <span class="w-4 h-4 rounded bg-purple-950/60 border border-purple-500/60"></span>
-          <span>Đôi (<?= number_format($basePrice + 85000, 0, ',', '.') ?>₫)</span>
+          <span>Đôi (<?= number_format($basePrice + $coupleSurcharge, 0, ',', '.') ?>₫)</span>
         </div>
         <div class="flex items-center gap-2">
           <span class="w-4 h-4 rounded bg-amber-500 shadow"></span>
@@ -181,7 +189,7 @@ $basePrice = (int)($showtime['base_price'] ?? 75000);
       <?php foreach ($combos as $cb): ?>
         <div class="p-3.5 rounded-2xl bg-gray-950 border border-gray-800 flex items-center justify-between">
           <div class="flex items-center gap-3">
-            <span class="text-2xl"><?= $cb['icon'] ?? '🍿' ?></span>
+            <span class="text-2xl"><?= htmlspecialchars($cb['icon'] ?? '🍿') ?></span>
             <div>
               <h4 class="font-bold text-sm text-white"><?= htmlspecialchars($cb['name']) ?></h4>
               <p class="text-xs text-gray-400"><?= htmlspecialchars($cb['desc'] ?? '') ?></p>
@@ -190,9 +198,9 @@ $basePrice = (int)($showtime['base_price'] ?? 75000);
           </div>
 
           <div class="flex items-center gap-2 bg-gray-900 border border-gray-800 rounded-xl p-1">
-            <button type="button" onclick="updateCombo(<?= $cb['id'] ?>, -1, <?= $cb['price'] ?>, '<?= addslashes($cb['name']) ?>')" class="w-7 h-7 rounded-lg bg-gray-800 text-white flex items-center justify-center hover:bg-gray-700 font-bold">-</button>
-            <span id="qty-<?= $cb['id'] ?>" class="w-6 text-center text-xs font-bold text-white">0</span>
-            <button type="button" onclick="updateCombo(<?= $cb['id'] ?>, 1, <?= $cb['price'] ?>, '<?= addslashes($cb['name']) ?>')" class="w-7 h-7 rounded-lg bg-amber-500 text-gray-950 flex items-center justify-center hover:bg-amber-400 font-bold">+</button>
+            <button type="button" onclick='updateCombo(<?= (int)$cb['id'] ?>, -1, <?= (int)$cb['price'] ?>, <?= json_encode($cb['name'], JSON_HEX_APOS | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_QUOT) ?>)' class="w-7 h-7 rounded-lg bg-gray-800 text-white flex items-center justify-center hover:bg-gray-700 font-bold">-</button>
+            <span id="qty-<?= (int)$cb['id'] ?>" class="w-6 text-center text-xs font-bold text-white">0</span>
+            <button type="button" onclick='updateCombo(<?= (int)$cb['id'] ?>, 1, <?= (int)$cb['price'] ?>, <?= json_encode($cb['name'], JSON_HEX_APOS | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_QUOT) ?>)' class="w-7 h-7 rounded-lg bg-amber-500 text-gray-950 flex items-center justify-center hover:bg-amber-400 font-bold">+</button>
           </div>
         </div>
       <?php endforeach; ?>

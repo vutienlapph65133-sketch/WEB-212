@@ -14,9 +14,16 @@ $searchResults = $searchResults ?? [];
 $searched      = $searched ?? false;
 ?>
 
+<style>
+  @media print {
+    body { background: #fff !important; color: #000 !important; }
+    #ticket-print-area { border: 1px solid #d1d5db !important; box-shadow: none !important; }
+  }
+</style>
+
 <div class="max-w-3xl mx-auto px-4 sm:px-6 py-10">
   <!-- ─── Hộp Tra cứu vé ─── -->
-  <div class="bg-gray-900/90 border border-gray-800 rounded-3xl p-6 mb-8 shadow-xl">
+  <div class="bg-gray-900/90 border border-gray-800 rounded-3xl p-6 mb-8 shadow-xl print:hidden">
     <h2 class="text-base font-bold text-white mb-2 flex items-center gap-2">
       <i data-lucide="search" class="w-5 h-5 text-amber-400"></i>
       Tra cứu thông tin vé xem phim
@@ -59,11 +66,21 @@ $searched      = $searched ?? false;
 
   <?php if ($order): ?>
     <!-- ─── Banner chúc mừng nếu là vừa đặt xong hoặc đã tìm thấy ─── -->
-    <div class="text-center mb-8">
-      <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 mb-3 animate-bounce">
-        <i data-lucide="check-circle" class="w-8 h-8"></i>
-      </div>
-      <span class="inline-block px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold mb-2">
+    <div class="text-center mb-8 print:hidden">
+      <?php if ($order['status'] === 'completed'): ?>
+        <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 mb-3 animate-bounce">
+          <i data-lucide="check-circle" class="w-8 h-8"></i>
+        </div>
+      <?php elseif ($order['status'] === 'cancelled'): ?>
+        <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-red-500/10 border border-red-500/30 text-red-400 mb-3">
+          <i data-lucide="x-circle" class="w-8 h-8"></i>
+        </div>
+      <?php else: ?>
+        <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 mb-3">
+          <i data-lucide="clock" class="w-8 h-8"></i>
+        </div>
+      <?php endif; ?>
+      <span class="block w-fit mx-auto px-3 py-1 rounded-full border text-xs font-bold mb-2 <?= $order['status'] === 'completed' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : ($order['status'] === 'cancelled' ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-amber-500/10 border-amber-500/30 text-amber-300') ?>">
         <?= $order['status'] === 'completed' ? 'Vé hợp lệ • Sẵn sàng check-in' : ($order['status'] === 'cancelled' ? 'Vé đã bị hủy' : 'Đang xử lý thanh toán') ?>
       </span>
       <h1 class="text-2xl sm:text-3xl font-black text-white">Vé Xem Phim Điện Tử</h1>
@@ -153,22 +170,40 @@ $searched      = $searched ?? false;
         </div>
 
         <!-- Dynamic SVG QR Code with Order Code -->
+        <?php
+          $qrHash = hash('sha256', (string)$order['code']);
+          $qrSize = 21;
+          $isFinder = function (int $r, int $c) use ($qrSize): ?bool {
+              $boxes = [[0, 0], [0, $qrSize - 7], [$qrSize - 7, 0]];
+              foreach ($boxes as [$br, $bc]) {
+                  if ($r >= $br && $r < $br + 7 && $c >= $bc && $c < $bc + 7) {
+                      $dr = $r - $br; $dc = $c - $bc;
+                      return ($dr === 0 || $dr === 6 || $dc === 0 || $dc === 6 || ($dr >= 2 && $dr <= 4 && $dc >= 2 && $dc <= 4));
+                  }
+              }
+              if (($r === 7 && ($c <= 7 || $c >= $qrSize - 8)) || ($c === 7 && ($r <= 7 || $r >= $qrSize - 8)) || ($r === $qrSize - 8 && $c <= 7) || ($c === $qrSize - 8 && $r <= 7)) {
+                  return false;
+              }
+              return null;
+          };
+        ?>
         <div class="flex flex-col items-center bg-white p-3 rounded-2xl shadow-xl">
-          <svg class="w-24 h-24" viewBox="0 0 100 100" fill="black">
-            <!-- QR pattern -->
-            <rect x="5" y="5" width="30" height="30" fill="none" stroke="black" stroke-width="6"/>
-            <rect x="15" y="15" width="10" height="10"/>
-            <rect x="65" y="5" width="30" height="30" fill="none" stroke="black" stroke-width="6"/>
-            <rect x="75" y="15" width="10" height="10"/>
-            <rect x="5" y="65" width="30" height="30" fill="none" stroke="black" stroke-width="6"/>
-            <rect x="15" y="75" width="10" height="10"/>
-            <!-- Center dots -->
-            <rect x="42" y="10" width="8" height="8"/><rect x="52" y="20" width="8" height="8"/>
-            <rect x="42" y="32" width="8" height="8"/><rect x="10" y="45" width="8" height="8"/>
-            <rect x="25" y="45" width="8" height="8"/><rect x="42" y="52" width="8" height="8"/>
-            <rect x="62" y="45" width="8" height="8"/><rect x="80" y="52" width="8" height="8"/>
-            <rect x="42" y="75" width="8" height="8"/><rect x="62" y="70" width="8" height="8"/>
-            <rect x="75" y="80" width="8" height="8"/>
+          <svg class="w-24 h-24" viewBox="0 0 21 21" fill="black" shape-rendering="crispEdges">
+            <?php for ($r = 0; $r < $qrSize; $r++): ?>
+              <?php for ($c = 0; $c < $qrSize; $c++):
+                $f = $isFinder($r, $c);
+                if ($f === null) {
+                    $idx = ($r * $qrSize + $c);
+                    $byte = hexdec(substr($qrHash, ($idx % 32) * 2, 2));
+                    $on = (($byte >> ($idx % 8)) & 1) === 1;
+                } else {
+                    $on = $f;
+                }
+                if ($on): ?>
+                  <rect x="<?= $c ?>" y="<?= $r ?>" width="1" height="1"/>
+                <?php endif; ?>
+              <?php endfor; ?>
+            <?php endfor; ?>
           </svg>
           <span class="text-[10px] font-mono text-gray-800 font-bold mt-1"><?= htmlspecialchars($order['code']) ?></span>
         </div>
@@ -176,7 +211,7 @@ $searched      = $searched ?? false;
     </div>
 
     <!-- Nút Thao tác -->
-    <div class="flex flex-wrap items-center justify-center gap-3 mt-8">
+    <div class="flex flex-wrap items-center justify-center gap-3 mt-8 print:hidden">
       <button type="button" onclick="window.print()" class="px-5 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-white font-medium text-xs border border-gray-700 flex items-center gap-2">
         <i data-lucide="printer" class="w-4 h-4 text-amber-400"></i> In / Lưu vé PDF
       </button>

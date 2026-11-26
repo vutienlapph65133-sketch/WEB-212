@@ -10,6 +10,8 @@ use App\Core\Loyalty;
 
 $users = $users ?? [];
 $msg   = $msg ?? '';
+$error = $error ?? '';
+$myId  = (int)(currentUser()['id'] ?? 0);
 ?>
 
 <div class="space-y-6">
@@ -17,6 +19,12 @@ $msg   = $msg ?? '';
     <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2">
       <i data-lucide="check-circle" class="w-4 h-4 text-emerald-600"></i>
       <span><?= htmlspecialchars($msg) ?></span>
+    </div>
+  <?php endif; ?>
+  <?php if (!empty($error)): ?>
+    <div class="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2">
+      <i data-lucide="alert-circle" class="w-4 h-4 text-rose-600"></i>
+      <span><?= htmlspecialchars($error) ?></span>
     </div>
   <?php endif; ?>
 
@@ -48,7 +56,7 @@ $msg   = $msg ?? '';
             <tr class="hover:bg-gray-50/80 transition-colors">
               <td class="py-3.5 px-4 font-bold text-gray-900 flex items-center gap-2">
                 <div class="w-7 h-7 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-[11px]">
-                  <?= strtoupper(substr($u['full_name'], 0, 1)) ?>
+                  <?= htmlspecialchars(first_letter_upper($u['full_name'])) ?>
                 </div>
                 <div>
                   <span class="block"><?= htmlspecialchars($u['full_name']) ?></span>
@@ -67,6 +75,7 @@ $msg   = $msg ?? '';
               </td>
               <td class="py-3.5 px-4 font-bold text-amber-600">
                 <form method="post" action="/admin/cinema/users" class="inline-flex items-center gap-1">
+                  <?= csrf_field() ?>
                   <input type="hidden" name="action" value="update_points">
                   <input type="hidden" name="id" value="<?= $u['id'] ?>">
                   <input type="number" min="0" step="1" name="points_balance" value="<?= (int)($u['points_balance'] ?? 0) ?>" class="w-20 bg-gray-50 border border-gray-200 rounded px-2 py-0.5 text-xs text-amber-600 font-bold focus:outline-none focus:border-blue-600">
@@ -82,22 +91,28 @@ $msg   = $msg ?? '';
               </td>
               <td class="py-3.5 px-4 text-right">
                 <div class="inline-flex items-center gap-2">
-                  <form method="post" action="/admin/cinema/users" class="inline-flex items-center">
-                    <input type="hidden" name="action" value="change_role">
-                    <input type="hidden" name="id" value="<?= $u['id'] ?>">
-                    <select name="role" onchange="this.form.submit()" class="bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 text-[11px] text-gray-700 focus:outline-none focus:border-blue-600">
-                      <option value="customer" <?= $u['role'] === 'customer' ? 'selected' : '' ?>>Khách hàng</option>
-                      <option value="admin" <?= $u['role'] === 'admin' ? 'selected' : '' ?>>Quản trị viên</option>
-                    </select>
-                  </form>
+                  <?php if ((int)$u['id'] === $myId): ?>
+                    <span class="text-[11px] text-gray-400 italic">Tài khoản hiện tại</span>
+                  <?php else: ?>
+                    <form method="post" action="/admin/cinema/users" class="inline-flex items-center">
+                      <?= csrf_field() ?>
+                      <input type="hidden" name="action" value="change_role">
+                      <input type="hidden" name="id" value="<?= (int)$u['id'] ?>">
+                      <select name="role" onchange="this.form.submit()" class="bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 text-[11px] text-gray-700 focus:outline-none focus:border-blue-600">
+                        <option value="customer" <?= $u['role'] === 'customer' ? 'selected' : '' ?>>Khách hàng</option>
+                        <option value="admin" <?= $u['role'] === 'admin' ? 'selected' : '' ?>>Quản trị viên</option>
+                      </select>
+                    </form>
 
-                  <form method="post" action="/admin/cinema/users" class="inline" onsubmit="return confirm('Bạn có chắc chắn muốn xóa tài khoản này?');">
-                    <input type="hidden" name="action" value="delete">
-                    <input type="hidden" name="id" value="<?= $u['id'] ?>">
-                    <button type="submit" class="p-1 rounded-lg text-red-600 hover:bg-red-50 transition-colors" title="Xóa tài khoản">
-                      <i data-lucide="trash-2" class="w-4 h-4"></i>
-                    </button>
-                  </form>
+                    <form method="post" action="/admin/cinema/users" class="inline" onsubmit="return confirm('Bạn có chắc chắn muốn xóa tài khoản này?');">
+                      <?= csrf_field() ?>
+                      <input type="hidden" name="action" value="delete">
+                      <input type="hidden" name="id" value="<?= (int)$u['id'] ?>">
+                      <button type="submit" class="p-1 rounded-lg text-red-600 hover:bg-red-50 transition-colors" title="Xóa tài khoản">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                      </button>
+                    </form>
+                  <?php endif; ?>
                 </div>
               </td>
             </tr>
