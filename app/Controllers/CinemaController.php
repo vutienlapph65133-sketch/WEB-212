@@ -70,12 +70,14 @@ class CinemaController
         $nowShowing = array_values(array_filter($movies, fn($m) => $m['status'] === 'now_showing'));
         $comingSoon = array_values(array_filter($movies, fn($m) => $m['status'] === 'coming_soon'));
         $featured = !empty($nowShowing) ? $nowShowing[0] : (!empty($movies) ? $movies[0] : null);
+        $bannerMovies = array_slice(!empty($nowShowing) ? array_merge($nowShowing, $comingSoon) : $movies, 0, 6);
 
         return view('client/cinema/home', compact(
             'movies',
             'nowShowing',
             'comingSoon',
             'featured',
+            'bannerMovies',
             'genresList',
             'search',
             'selectedGenre'
