@@ -10,60 +10,91 @@ $movies        = $movies ?? [];
 $nowShowing    = $nowShowing ?? [];
 $comingSoon    = $comingSoon ?? [];
 $featured      = $featured ?? (!empty($movies) ? $movies[0] : null);
+$bannerMovies  = $bannerMovies ?? ($featured ? [$featured] : []);
 $genresList    = $genresList ?? [];
 $search        = $search ?? '';
 $selectedGenre = $selectedGenre ?? '';
 ?>
 
-<!-- ─── Hero Section ─── -->
-<?php if ($featured): ?>
-<section class="relative h-[500px] sm:h-[580px] overflow-hidden">
-  <img src="<?= htmlspecialchars($featured['backdrop']) ?>" alt="<?= htmlspecialchars($featured['title']) ?>" class="absolute inset-0 w-full h-full object-cover">
-  <!-- Gradient overlays -->
-  <div class="absolute inset-0 bg-gradient-to-r from-gray-950 via-gray-950/85 to-transparent"></div>
-  <div class="absolute inset-0 bg-gradient-to-t from-gray-950 via-transparent to-gray-950/40"></div>
+<!-- ─── Hero Carousel Section ─── -->
+<?php if (!empty($bannerMovies)): ?>
+<section id="hero-carousel" class="relative h-[500px] sm:h-[580px] overflow-hidden select-none">
+  <?php foreach ($bannerMovies as $idx => $slide):
+    $isActive = ($idx === 0);
+  ?>
+    <div class="hero-slide absolute inset-0 transition-opacity duration-700 ease-in-out <?= $isActive ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none' ?>" data-slide="<?= $idx ?>">
+      <img src="<?= htmlspecialchars($slide['backdrop']) ?>" alt="<?= htmlspecialchars($slide['title']) ?>" class="absolute inset-0 w-full h-full object-cover">
+      <!-- Gradient overlays -->
+      <div class="absolute inset-0 bg-gradient-to-r from-gray-950 via-gray-950/85 to-transparent"></div>
+      <div class="absolute inset-0 bg-gradient-to-t from-gray-950 via-transparent to-gray-950/40"></div>
 
-  <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center">
-    <div class="max-w-xl space-y-4">
-      <div class="flex items-center gap-3">
-        <span class="inline-flex items-center gap-1 rounded-full bg-amber-500/20 border border-amber-500/40 px-3 py-1 text-xs font-semibold text-amber-400">
-          <i data-lucide="star" class="w-3.5 h-3.5 fill-amber-400"></i>
-          <?= number_format($featured['rating'], 1) ?>/10
-        </span>
-        <span class="rounded-full bg-red-500/20 border border-red-500/40 px-2.5 py-0.5 text-xs font-bold text-red-400">
-          <?= htmlspecialchars($featured['ageRating']) ?>
-        </span>
-      </div>
+      <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center pb-8">
+        <div class="max-w-xl space-y-4">
+          <div class="flex flex-wrap items-center gap-2.5">
+            <span class="inline-flex items-center gap-1 rounded-full bg-amber-500/20 border border-amber-500/40 px-3 py-1 text-xs font-semibold text-amber-400">
+              <i data-lucide="star" class="w-3.5 h-3.5 fill-amber-400"></i>
+              <?= number_format($slide['rating'], 1) ?>/10
+            </span>
+            <span class="rounded-full bg-red-500/20 border border-red-500/40 px-2.5 py-0.5 text-xs font-bold text-red-400">
+              <?= htmlspecialchars($slide['ageRating']) ?>
+            </span>
+            <span class="rounded-full px-2.5 py-0.5 text-[11px] font-semibold border <?= $slide['status'] === 'now_showing' ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300' : 'bg-blue-500/15 border-blue-500/40 text-blue-300' ?>">
+              <?= $slide['status'] === 'now_showing' ? 'Đang chiếu' : 'Sắp chiếu' ?>
+            </span>
+          </div>
 
-      <h1 class="text-3xl sm:text-5xl font-black text-white leading-tight">
-        <?= htmlspecialchars($featured['title']) ?>
-      </h1>
+          <h1 class="text-3xl sm:text-5xl font-black text-white leading-tight">
+            <?= htmlspecialchars($slide['title']) ?>
+          </h1>
 
-      <div class="flex flex-wrap gap-2 text-xs text-gray-300">
-        <?php foreach ($featured['genre'] as $g): ?>
-          <span class="rounded-full bg-gray-800/80 border border-gray-700 px-3 py-1"><?= htmlspecialchars($g) ?></span>
-        <?php endforeach; ?>
-        <span class="flex items-center gap-1 text-gray-400 py-1">
-          <i data-lucide="clock" class="w-3.5 h-3.5"></i> <?= (int)$featured['duration'] ?> phút
-        </span>
-      </div>
+          <div class="flex flex-wrap gap-2 text-xs text-gray-300">
+            <?php foreach ($slide['genre'] as $g): ?>
+              <span class="rounded-full bg-gray-800/80 border border-gray-700 px-3 py-1"><?= htmlspecialchars($g) ?></span>
+            <?php endforeach; ?>
+            <span class="flex items-center gap-1 text-gray-400 py-1">
+              <i data-lucide="clock" class="w-3.5 h-3.5"></i> <?= (int)$slide['duration'] ?> phút
+            </span>
+          </div>
 
-      <p class="text-gray-300 text-sm leading-relaxed line-clamp-3">
-        <?= htmlspecialchars($featured['description']) ?>
-      </p>
+          <p class="text-gray-300 text-sm leading-relaxed line-clamp-3">
+            <?= htmlspecialchars($slide['description']) ?>
+          </p>
 
-      <div class="flex items-center gap-3 pt-2">
-        <a href="/cinema/detail?id=<?= $featured['id'] ?>" class="inline-flex items-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-gray-950 font-bold px-6 py-3 text-sm transition-all shadow-lg shadow-amber-500/20">
-          <i data-lucide="ticket" class="w-4 h-4"></i>
-          Đặt vé ngay
-        </a>
-        <a href="/cinema/detail?id=<?= $featured['id'] ?>" class="inline-flex items-center gap-2 rounded-xl bg-gray-900/80 hover:bg-gray-800 border border-gray-700 text-white font-medium px-5 py-3 text-sm transition-colors">
-          <i data-lucide="play" class="w-4 h-4 text-amber-400"></i>
-          Xem thông tin
-        </a>
+          <div class="flex items-center gap-3 pt-2">
+            <a href="/cinema/detail?id=<?= $slide['id'] ?>" class="inline-flex items-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-gray-950 font-bold px-6 py-3 text-sm transition-all shadow-lg shadow-amber-500/20">
+              <i data-lucide="ticket" class="w-4 h-4"></i>
+              Đặt vé ngay
+            </a>
+            <a href="/cinema/detail?id=<?= $slide['id'] ?>" class="inline-flex items-center gap-2 rounded-xl bg-gray-900/80 hover:bg-gray-800 border border-gray-700 text-white font-medium px-5 py-3 text-sm transition-colors">
+              <i data-lucide="play" class="w-4 h-4 text-amber-400"></i>
+              Xem thông tin
+            </a>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
+  <?php endforeach; ?>
+
+  <?php if (count($bannerMovies) > 1): ?>
+    <!-- Nút điều hướng Trái / Phải -->
+    <button type="button" onclick="prevHeroSlide()" aria-label="Phim trước"
+            class="hidden sm:flex absolute left-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-gray-950/60 hover:bg-amber-500 text-white hover:text-gray-950 border border-gray-700/70 items-center justify-center backdrop-blur transition-all">
+      <i data-lucide="chevron-left" class="w-5 h-5"></i>
+    </button>
+    <button type="button" onclick="nextHeroSlide()" aria-label="Phim tiếp theo"
+            class="hidden sm:flex absolute right-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-gray-950/60 hover:bg-amber-500 text-white hover:text-gray-950 border border-gray-700/70 items-center justify-center backdrop-blur transition-all">
+      <i data-lucide="chevron-right" class="w-5 h-5"></i>
+    </button>
+
+    <!-- Chỉ báo các slide (Dots) -->
+    <div class="absolute bottom-12 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
+      <?php foreach ($bannerMovies as $idx => $slide): ?>
+        <button type="button" onclick="goToHeroSlide(<?= $idx ?>)" aria-label="Chuyển tới <?= htmlspecialchars($slide['title']) ?>"
+                class="hero-dot h-2 rounded-full transition-all duration-300 <?= $idx === 0 ? 'w-7 bg-amber-400' : 'w-2 bg-gray-500/70 hover:bg-gray-300' ?>"
+                data-dot="<?= $idx ?>"></button>
+      <?php endforeach; ?>
+    </div>
+  <?php endif; ?>
 </section>
 <?php endif; ?>
 
@@ -108,6 +139,7 @@ $selectedGenre = $selectedGenre ?? '';
 
 <!-- ─── Movies Grid Section ─── -->
 <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12" id="now-showing">
+  <span id="coming-soon" class="block -mt-20 pt-20 pointer-events-none"></span>
   <!-- Tabs bar -->
   <div class="flex items-center justify-between border-b border-gray-800 pb-4 mb-8">
     <div class="flex gap-4 sm:gap-8">
@@ -203,10 +235,94 @@ $selectedGenre = $selectedGenre ?? '';
     });
   }
 
-  // Khởi tạo tab mặc định
-  document.addEventListener('DOMContentLoaded', () => {
-    switchTab('now_showing');
-  });
+  function syncTabFromHashOrResult() {
+    if (window.location.hash === '#coming-soon') {
+      switchTab('coming_soon');
+      return;
+    }
+    if (window.location.hash === '#now-showing') {
+      switchTab('now_showing');
+      return;
+    }
+    const defaultTab = <?= (empty($nowShowing) && !empty($comingSoon)) ? "'coming_soon'" : "'now_showing'" ?>;
+    switchTab(defaultTab);
+  }
+
+  // Khởi tạo tab mặc định & lắng nghe đổi hash (#coming-soon / #now-showing)
+  document.addEventListener('DOMContentLoaded', syncTabFromHashOrResult);
+  window.addEventListener('hashchange', syncTabFromHashOrResult);
+
+  // ── Hero Banner Auto-Slider ──
+  const heroSlides = document.querySelectorAll('.hero-slide');
+  const heroDots   = document.querySelectorAll('.hero-dot');
+  let heroIndex    = 0;
+  let heroTimer    = null;
+
+  function renderHeroSlide(index) {
+    if (heroSlides.length <= 1) return;
+    heroIndex = (index + heroSlides.length) % heroSlides.length;
+
+    heroSlides.forEach((slide, i) => {
+      if (i === heroIndex) {
+        slide.classList.remove('opacity-0', 'z-0', 'pointer-events-none');
+        slide.classList.add('opacity-100', 'z-10');
+      } else {
+        slide.classList.remove('opacity-100', 'z-10');
+        slide.classList.add('opacity-0', 'z-0', 'pointer-events-none');
+      }
+    });
+
+    heroDots.forEach((dot, i) => {
+      dot.className = 'hero-dot h-2 rounded-full transition-all duration-300 ' +
+        (i === heroIndex ? 'w-7 bg-amber-400' : 'w-2 bg-gray-500/70 hover:bg-gray-300');
+    });
+  }
+
+  function startHeroAutoPlay() {
+    if (heroSlides.length <= 1) return;
+    stopHeroAutoPlay();
+    heroTimer = setInterval(() => renderHeroSlide(heroIndex + 1), 5000);
+  }
+
+  function stopHeroAutoPlay() {
+    if (heroTimer) {
+      clearInterval(heroTimer);
+      heroTimer = null;
+    }
+  }
+
+  function nextHeroSlide() {
+    renderHeroSlide(heroIndex + 1);
+    startHeroAutoPlay();
+  }
+
+  function prevHeroSlide() {
+    renderHeroSlide(heroIndex - 1);
+    startHeroAutoPlay();
+  }
+
+  function goToHeroSlide(idx) {
+    renderHeroSlide(idx);
+    startHeroAutoPlay();
+  }
+
+  const heroSection = document.getElementById('hero-carousel');
+  if (heroSection && heroSlides.length > 1) {
+    startHeroAutoPlay();
+    heroSection.addEventListener('mouseenter', stopHeroAutoPlay);
+    heroSection.addEventListener('mouseleave', startHeroAutoPlay);
+
+    let touchStartX = 0;
+    heroSection.addEventListener('touchstart', e => {
+      touchStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
+    heroSection.addEventListener('touchend', e => {
+      const diff = e.changedTouches[0].screenX - touchStartX;
+      if (Math.abs(diff) > 40) {
+        diff < 0 ? nextHeroSlide() : prevHeroSlide();
+      }
+    }, { passive: true });
+  }
 </script>
 
 <?php include __DIR__ . '/layouts/footer.php'; ?>
